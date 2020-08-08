@@ -3,6 +3,7 @@
  * gadget.c - DesignWare USB3 DRD Controller Gadget Framework Link
  *
  * Copyright (C) 2010-2011 Texas Instruments Incorporated - https://www.ti.com
+ * Copyright (C) 2020 XiaoMi, Inc.
  *
  * Authors: Felipe Balbi <balbi@ti.com>,
  *	    Sebastian Andrzej Siewior <bigeasy@linutronix.de>
@@ -2456,8 +2457,9 @@ static void __dwc3_gadget_set_speed(struct dwc3 *dwc)
 
 static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
 {
-	u32			reg;
-	u32			timeout = 500;
+	u32			reg, reg1;
+	u32			timeout = 1500;
+	ktime_t start, diff;
 
 	if (pm_runtime_suspended(dwc->dev))
 		return 0;
@@ -2471,6 +2473,28 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
 
 		if (!DWC3_VER_IS_PRIOR(DWC3, 194A))
 			reg &= ~DWC3_DCTL_KEEP_CONNECT;
+
+		start = ktime_get();
+		/* issue device SoftReset */
+		dwc3_writel(dwc->regs, DWC3_DCTL, reg | DWC3_DCTL_CSFTRST);
+		do {
+			reg = dwc3_readl(dwc->regs, DWC3_DCTL);
+			if (!(reg & DWC3_DCTL_CSFTRST))
+				break;
+
+			diff = ktime_sub(ktime_get(), start);
+			/* poll for max. 10ms */
+			if (ktime_to_ms(diff) > DWC3_SOFT_RESET_TIMEOUT) {
+				printk_ratelimited(KERN_ERR
+					"%s:core Reset Timed Out\n", __func__);
+				break;
+			}
+			cpu_relax();
+		} while (true);
+
+		dwc3_event_buffers_setup(dwc);
+		dwc3_gadget_restart(dwc);
+		reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 		reg |= DWC3_DCTL_RUN_STOP;
 
 		__dwc3_gadget_set_speed(dwc);

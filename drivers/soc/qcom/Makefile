@@ -27,3 +27,9 @@ obj-$(CONFIG_QCOM_RPMHPD) += rpmhpd.o
 obj-$(CONFIG_QCOM_RPMPD) += rpmpd.o
 obj-$(CONFIG_QCOM_KRYO_L2_ACCESSORS) +=	kryo-l2-accessors.o
 obj-y += serial_num.o
+ifdef CONFIG_MSM_SUBSYSTEM_RESTART
+	obj-y += subsystem_notif.o
+	obj-y += subsystem_restart.o
+	obj-y += ramdump.o
+	obj-y += microdump_collector.o
+endif

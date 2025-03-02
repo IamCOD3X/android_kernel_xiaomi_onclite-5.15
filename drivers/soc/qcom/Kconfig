@@ -211,4 +211,25 @@ config QCOM_APR
 	  application processor and QDSP6. APR is
 	  used by audio driver to configure QDSP6
 	  ASM, ADM and AFE modules.
+
+config MSM_SERVICE_NOTIFIER
+	bool "Service Notifier"
+	depends on MSM_SERVICE_LOCATOR && MSM_SUBSYSTEM_RESTART
+	help
+	  The Service Notifier provides a library for a kernel client to
+	  register for state change notifications regarding a remote service.
+	  A remote service here refers to a process providing certain services
+	  like audio, the identifier for which is provided by the service
+	  locator.
+
+config MSM_SUBSYSTEM_RESTART
+	bool "MSM Subsystem Restart"
+	help
+	  This option enables the MSM subsystem restart framework.
+	
+	  The MSM subsystem restart framework provides support to boot,
+	  shutdown, and restart subsystems with a reference counted API.
+	  It also notifies userspace of transitions between these states via
+	  sysfs.
+
 endmenu

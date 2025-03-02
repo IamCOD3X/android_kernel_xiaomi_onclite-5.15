@@ -5,6 +5,7 @@
  * Written by Stephen C. Tweedie <sct@redhat.com>, 1998
  *
  * Copyright 1998 Red Hat corp --- All Rights Reserved
+ * Copyright (C) 2020 XiaoMi, Inc.
  *
  * Generic filesystem transaction handling code; part of the ext2fs
  * journaling system.
@@ -112,6 +113,8 @@ static void jbd2_get_transaction(journal_t *journal,
 		   jbd2_descriptor_blocks_per_trans(journal) +
 		   atomic_read(&journal->j_reserved_credits));
 	atomic_set(&transaction->t_outstanding_revokes, 0);
+	atomic_set(&transaction->t_write_inodes, 0);
+	atomic_set(&transaction->t_wait_inodes, 0);
 	atomic_set(&transaction->t_handle_count, 0);
 	INIT_LIST_HEAD(&transaction->t_inode_list);
 	INIT_LIST_HEAD(&transaction->t_private_list);
@@ -2681,6 +2684,7 @@ static int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode,
 	jbd2_debug(4, "Adding inode %lu, tid:%d\n", jinode->i_vfs_inode->i_ino,
 			transaction->t_tid);
 
+	/* Is inode already attached where we need it? */
 	spin_lock(&journal->j_list_lock);
 	jinode->i_flags |= flags;
 
@@ -2717,7 +2721,29 @@ static int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode,
 	J_ASSERT(!jinode->i_next_transaction);
 	jinode->i_transaction = transaction;
 	list_add(&jinode->i_list, &transaction->t_inode_list);
+	/* collect transaction inodes info */
+	if (flags & JI_WRITE_DATA)
+		atomic_inc(&transaction->t_write_inodes);
+	else
+		atomic_inc(&transaction->t_wait_inodes);
 done:
+        if (jinode->i_transaction == transaction) {
+		if (jinode->i_dirty_end) {
+			jinode->i_dirty_start = min(jinode->i_dirty_start, start_byte);
+			jinode->i_dirty_end = max(jinode->i_dirty_end, end_byte);
+		} else {
+			jinode->i_dirty_start = start_byte;
+			jinode->i_dirty_end = end_byte;
+		}
+	} else {
+		if (jinode->i_next_dirty_end) {
+			jinode->i_next_dirty_start = min(jinode->i_next_dirty_start, start_byte);
+			jinode->i_next_dirty_end = max(jinode->i_next_dirty_end, end_byte);
+		} else {
+			jinode->i_next_dirty_start = start_byte;
+			jinode->i_next_dirty_end = end_byte;
+		}
+	}
 	spin_unlock(&journal->j_list_lock);
 
 	return 0;
@@ -2730,6 +2756,7 @@ int jbd2_journal_inode_ranged_write(handle_t *handle,
 			JI_WRITE_DATA | JI_WAIT_DATA, start_byte,
 			start_byte + length - 1);
 }
+EXPORT_SYMBOL(jbd2_journal_inode_ranged_write);
 
 int jbd2_journal_inode_ranged_wait(handle_t *handle, struct jbd2_inode *jinode,
 		loff_t start_byte, loff_t length)
@@ -2737,6 +2764,8 @@ int jbd2_journal_inode_ranged_wait(handle_t *handle, struct jbd2_inode *jinode,
 	return jbd2_journal_file_inode(handle, jinode, JI_WAIT_DATA,
 			start_byte, start_byte + length - 1);
 }
+EXPORT_SYMBOL(jbd2_journal_inode_ranged_wait);
+
 
 /*
  * File truncate and transaction commit interact with each other in a

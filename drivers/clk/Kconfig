@@ -423,3 +423,5 @@ source "drivers/clk/xilinx/Kconfig"
 source "drivers/clk/zynqmp/Kconfig"
 
 endif
+
+source "drivers/clk/msm/Kconfig"

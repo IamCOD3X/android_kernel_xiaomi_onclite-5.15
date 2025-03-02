@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
- * Copyright (C) 2017 XiaoMi, Inc.
+ * Copyright (C) 2020 XiaoMi, Inc.
  */
 
 #define pr_fmt(fmt)	"%s: " fmt, __func__
@@ -369,17 +369,16 @@ struct device_node *of_batterydata_get_best_profile(
 					best_id_kohm = batt_ids.kohm[i];
 				}
 			}
-			#if 0
+#if 0
 		}
 #endif
 	}
 
 	if (best_node == NULL) {
 		pr_err("No battery data found\n");
-#ifdef CONFIG_MACH_XIAOMI_YSL
+//begin battery id not use unknown battery file longcheer 18.7.31
 		for_each_child_of_node(batterydata_container_node, node) {
-			rc = of_property_read_string(node, "qcom,battery-type",
-							&battery_type);
+			rc = of_property_read_string(node, "qcom, battery-type", &battery_type);
 			if (!rc && strcmp(battery_type, "unknown-battery") == 0) {
 				best_node = node;
 				break;
@@ -387,7 +386,7 @@ struct device_node *of_batterydata_get_best_profile(
 		}
 		if(best_node)
 			pr_err("use unknown battery data\n");
-#endif
+//end
 		return best_node;
 	}
 

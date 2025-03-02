@@ -475,7 +475,13 @@ config ANT_CHECK
 	depends on GPIOLIB
 	help
 	  Say 'y' here to include support for An gpio detect Ant connect Machine
-	default n	  
+	default n
+	
+config SIMTRAY_STATUS
+	tristate "Xiaomi SIM tray status"
+	default n
+	help
+	  Say 'y' here to support SIM tray GPIO detection		  
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* Copyright (c) 2018, 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2020 XiaoMi, Inc.
  */
 
 #define CONFIG_PINCTRL_WCD 1
@@ -21,6 +22,7 @@
 #define CONFIG_SND_SOC_MSM_HOSTLESS_PCM 1
 #define CONFIG_SND_SOC_MSM_QDSP6V2_INTF 1
 #define CONFIG_SND_SOC_SDM450 1
+#define CONFIG_SND_SOC_AW87329 1
 #define CONFIG_SND_SOC_EXT_CODEC_SDM450 1
 #define CONFIG_SOUNDWIRE 1
 #define CONFIG_SOUNDWIRE_WCD_CTRL 1

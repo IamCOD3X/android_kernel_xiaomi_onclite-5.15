@@ -3,6 +3,7 @@
  * drivers/mmc/host/sdhci-msm.c - Qualcomm SDHCI Platform driver
  *
  * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2020 XiaoMi, Inc. 
  */
 
 #include <linux/module.h>
@@ -18,6 +19,7 @@
 #include <linux/interconnect.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/reset.h>
+#include <linux/device.h>
 
 #include "sdhci-pltfm.h"
 #include "cqhci.h"
@@ -2524,6 +2526,49 @@ static int sdhci_msm_gcc_reset(struct device *dev, struct sdhci_host *host)
 
 	return ret;
 }
+
+/* add sdcard slot detect status for factory mode
+ *    begin
+ *    */
+static struct kobject *card_slot_device = NULL;
+static struct sdhci_msm_host *host_with_slot_detect = NULL;
+
+static ssize_t card_slot_status_show(struct device *dev,
+					       struct device_attribute *attr, char *buf)
+{
+	if (host_with_slot_detect && gpio_is_valid(host_with_slot_detect->pdata->status_gpio)) {
+		return snprintf(buf, PAGE_SIZE, "%d\n", mmc_gpio_get_cd(host_with_slot_detect->mmc));
+	} else
+		return -EINVAL;
+}
+
+static DEVICE_ATTR(card_slot_status, S_IRUGO ,
+						card_slot_status_show, NULL);
+
+int32_t card_slot_init_device_name(void)
+{
+	int32_t error = 0;
+	if(card_slot_device != NULL){
+		pr_err("card_slot already created\n");
+		return 0;
+	}
+	card_slot_device = kobject_create_and_add("card_slot", NULL);
+	if (card_slot_device == NULL) {
+		printk("%s: card_slot register failed\n", __func__);
+		error = -ENOMEM;
+		return error ;
+	}
+	error = sysfs_create_file(card_slot_device, &dev_attr_card_slot_status.attr);
+	if (error) {
+		printk("%s: card_slot_status_create_file failed\n", __func__);
+		kobject_del(card_slot_device);
+	}
+
+	return 0 ;
+}
+/* add sdcard slot detect status for factory mode
+ *    end
+ *    */
 
 static int sdhci_msm_probe(struct platform_device *pdev)
 {

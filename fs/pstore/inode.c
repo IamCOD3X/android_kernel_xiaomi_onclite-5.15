@@ -425,7 +425,7 @@ int pstore_mkfile(struct dentry *root, struct pstore_record *record)
 	private->count = record->count;
 	private->psi = record->psi;
 		
-	switch (type) {
+	switch (ps->type) {
 	case PSTORE_TYPE_DMESG:
 		scnprintf(name, sizeof(name), "dmesg-%s-%lld%s",
 			  pstore_type_to_name(record->type), record->psi->name, record->id, record->compressed ? ".enc.z" : "");

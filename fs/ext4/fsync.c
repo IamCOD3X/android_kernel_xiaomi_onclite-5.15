@@ -106,6 +106,7 @@ static int ext4_fsync_nojournal(struct inode *inode, bool datasync,
 static int ext4_fsync_journal(struct inode *inode, bool datasync,
 			     bool *needs_barrier)
 {
+	int ret = 0, err;
 	struct ext4_inode_info *ei = EXT4_I(inode);
 	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
 	tid_t commit_tid = datasync ? ei->i_datasync_tid : ei->i_sync_tid;
@@ -141,6 +142,16 @@ static int ext4_fsync_journal(struct inode *inode, bool datasync,
 	}		
 
 	return ext4_fc_commit(journal, commit_tid);
+	if (needs_barrier) {
+		issue_flush:
+			err = blkdev_issue_flush(inode->i_sb->s_bdev);
+			if (!ret)
+				ret = err;
+	}
+
+out:
+	trace_ext4_sync_file_exit(inode, ret);
+	return ret;
 }
 
 /*

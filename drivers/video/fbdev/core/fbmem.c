@@ -1101,10 +1101,6 @@ fb_blank(struct fb_info *info, int blank)
 
 	if (!ret)
 		fb_notifier_call_chain(FB_EVENT_BLANK, &event);
-<<<<<<< HEAD
-
-	return ret;
-=======
 	else {
 		/*
 		 * if fb_blank is failed then revert effects of
@@ -1117,7 +1113,6 @@ fb_blank(struct fb_info *info, int blank)
 		info->blank=blank;
 	}
  	return ret;
->>>>>>> 875c3150c582 (drivers: video: Import Xiaomi changes)
 }
 EXPORT_SYMBOL(fb_blank);
 
@@ -1667,12 +1662,8 @@ static int do_register_framebuffer(struct fb_info *fb_info)
 		if (!registered_fb[i])
 			break;
 	fb_info->node = i;
-<<<<<<< HEAD
-	refcount_set(&fb_info->count, 1);
-=======
 	fb_info->blank= -1;
 	atomic_set(&fb_info->count, 1);
->>>>>>> 875c3150c582 (drivers: video: Import Xiaomi changes)
 	mutex_init(&fb_info->lock);
 	mutex_init(&fb_info->mm_lock);
 

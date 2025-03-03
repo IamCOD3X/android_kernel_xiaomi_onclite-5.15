@@ -3362,6 +3362,8 @@ static inline void inode_dio_begin(struct inode *inode)
 	atomic_inc(&inode->i_dio_count);
 }
 
+struct inode *dio_bio_get_inode(struct bio *bio);
+
 /**
  * inode_dio_end - signal finish of a direct I/O requests
  * @inode: inode the direct I/O happens on

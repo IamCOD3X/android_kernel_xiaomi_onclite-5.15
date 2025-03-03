@@ -2288,7 +2288,7 @@ static int __sdfat_getattr(struct inode *inode, struct kstat *stat)
 {
 	TMSG("%s entered\n", __func__);
 
-	generic_fillattr(inode, stat);
+	generic_fillattr(&init_user_ns, inode, stat);
 	stat->blksize = SDFAT_SB(inode->i_sb)->fsi.cluster_size;
 
 	TMSG("%s exited\n", __func__);
@@ -2939,7 +2939,7 @@ static int sdfat_setattr(struct dentry *dentry, struct iattr *attr)
 		attr->ia_valid &= ~(ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET);
 	}
 
-	error = setattr_prepare(dentry, attr);
+	error = setattr_prepare(&init_user_ns, dentry, attr);
 	attr->ia_valid = ia_valid;
 	if (error)
 		goto out;
@@ -2978,7 +2978,7 @@ static int sdfat_setattr(struct dentry *dentry, struct iattr *attr)
 			inode, (u64)old_size, (u64)attr->ia_size);
 		__sdfat_do_truncate(inode, old_size, attr->ia_size);
 	}
-	setattr_copy(inode, attr);
+	setattr_copy(&init_user_ns, inode, attr);
 	mark_inode_dirty(inode);
 out:
 	TMSG("%s exited with err(%d)\n", __func__, error);

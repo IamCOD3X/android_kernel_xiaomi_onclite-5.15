@@ -903,11 +903,11 @@ static int sdfat_file_fsync(struct file *filp, int datasync)
  * MORE FUNCTIONS WHICH HAS KERNEL VERSION DEPENDENCY
  *************************************************************************/
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
-#define CURRENT_TIME_SEC	timespec64_trunc(current_kernel_time64(), NSEC_PER_SEC)
+#define ktime_get_real_ts64(ts)    ktime_get_ts64(&ts)
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-#define CURRENT_TIME_SEC        timespec_trunc(current_kernel_time(), NSEC_PER_SEC)
+#define ktime_get_real_ts64(ts)    getnstimeofday64(&ts)
 #else /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0) */
-       /* EMPTY */
+    /* EMPTY */
 #endif
 
 
@@ -2385,8 +2385,8 @@ static const struct file_operations sdfat_dir_operations = {
 static int __sdfat_create(struct inode *dir, struct dentry *dentry)
 {
 	struct super_block *sb = dir->i_sb;
+	struct timespec64 ts;
 	struct inode *inode;
-	sdfat_timespec_t ts;
 	FILE_ID_T fid;
 	loff_t i_pos;
 	int err;
@@ -2394,8 +2394,8 @@ static int __sdfat_create(struct inode *dir, struct dentry *dentry)
 	__lock_super(sb);
 
 	TMSG("%s entered\n", __func__);
-
-	ts = CURRENT_TIME_SEC;
+	
+	ktime_get_ts64(&ts);
 
 	err = fsapi_create(dir, (u8 *) dentry->d_name.name, FM_REGULAR, &fid);
 	if (err)
@@ -2546,15 +2546,15 @@ error:
 static int sdfat_unlink(struct inode *dir, struct dentry *dentry)
 {
 	struct inode *inode = dentry->d_inode;
+	struct timespec64 ts;
 	struct super_block *sb = dir->i_sb;
-	sdfat_timespec_t ts;
 	int err;
 
 	__lock_super(sb);
 
 	TMSG("%s entered\n", __func__);
 
-	ts = CURRENT_TIME_SEC;
+	ktime_get_ts64(&ts);
 
 	SDFAT_I(inode)->fid.size = i_size_read(inode);
 
@@ -2587,8 +2587,8 @@ out:
 static int sdfat_symlink(struct inode *dir, struct dentry *dentry, const char *target)
 {
 	struct super_block *sb = dir->i_sb;
+	struct timespec64 ts;
 	struct inode *inode;
-	sdfat_timespec_t ts;
 	FILE_ID_T fid;
 	loff_t i_pos;
 	int err;
@@ -2602,8 +2602,8 @@ static int sdfat_symlink(struct inode *dir, struct dentry *dentry, const char *t
 	__lock_super(sb);
 
 	TMSG("%s entered\n", __func__);
-
-	ts = CURRENT_TIME_SEC;
+	
+	ktime_get_ts64(&ts);
 
 	err = fsapi_create(dir, (u8 *) dentry->d_name.name, FM_SYMLINK, &fid);
 	if (err)
@@ -2654,8 +2654,8 @@ out:
 static int __sdfat_mkdir(struct inode *dir, struct dentry *dentry)
 {
 	struct super_block *sb = dir->i_sb;
+	struct timespec64 ts;
 	struct inode *inode;
-	sdfat_timespec_t ts;
 	FILE_ID_T fid;
 	loff_t i_pos;
 	int err;
@@ -2663,8 +2663,8 @@ static int __sdfat_mkdir(struct inode *dir, struct dentry *dentry)
 	__lock_super(sb);
 
 	TMSG("%s entered\n", __func__);
-
-	ts = CURRENT_TIME_SEC;
+	
+	ktime_get_ts64(&ts);
 
 	err = fsapi_mkdir(dir, (u8 *) dentry->d_name.name, &fid);
 	if (err)
@@ -2705,15 +2705,15 @@ out:
 static int sdfat_rmdir(struct inode *dir, struct dentry *dentry)
 {
 	struct inode *inode = dentry->d_inode;
+	struct timespec64 ts;
 	struct super_block *sb = dir->i_sb;
-	sdfat_timespec_t ts;
 	int err;
 
 	__lock_super(sb);
 
 	TMSG("%s entered\n", __func__);
-
-	ts = CURRENT_TIME_SEC;
+	
+	ktime_get_ts64(&ts);
 
 	SDFAT_I(inode)->fid.size = i_size_read(inode);
 
@@ -2746,8 +2746,8 @@ static int __sdfat_rename(struct inode *old_dir, struct dentry *old_dentry,
 		struct inode *new_dir, struct dentry *new_dentry)
 {
 	struct inode *old_inode, *new_inode;
+	struct timespec64 ts;
 	struct super_block *sb = old_dir->i_sb;
-	sdfat_timespec_t ts;
 	loff_t i_pos;
 	int err;
 
@@ -2758,7 +2758,7 @@ static int __sdfat_rename(struct inode *old_dir, struct dentry *old_dentry,
 	old_inode = old_dentry->d_inode;
 	new_inode = new_dentry->d_inode;
 
-	ts = CURRENT_TIME_SEC;
+	ktime_get_ts64(&ts);
 
 	SDFAT_I(old_inode)->fid.size = i_size_read(old_inode);
 
@@ -2829,14 +2829,16 @@ out:
 static int sdfat_cont_expand(struct inode *inode, loff_t size)
 {
 	struct address_space *mapping = inode->i_mapping;
+	struct timespec64 ts;
 	loff_t start = i_size_read(inode), count = size - i_size_read(inode);
 	int err, err2;
 
 	err = generic_cont_expand_simple(inode, size);
 	if (err)
 		return err;
-
-	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
+	
+	ktime_get_ts64(&ts);
+	inode->i_ctime = inode->i_mtime = ts;
 	mark_inode_dirty(inode);
 
 	if (!IS_SYNC(inode))
@@ -3070,6 +3072,7 @@ static const struct address_space_operations sdfat_aops;
 static void sdfat_truncate(struct inode *inode, loff_t old_size)
 {
 	struct super_block *sb = inode->i_sb;
+	struct timespec64 ts;
 	struct sdfat_sb_info *sbi = SDFAT_SB(sb);
 	FS_INFO_T *fsi = &(sbi->fsi);
 	unsigned int blocksize = 1 << inode->i_blkbits;
@@ -3093,8 +3096,9 @@ static void sdfat_truncate(struct inode *inode, loff_t old_size)
 	err = fsapi_truncate(inode, old_size, i_size_read(inode));
 	if (err)
 		goto out;
-
-	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
+	
+	ktime_get_ts64(&ts);
+	inode->i_ctime = inode->i_mtime = ts;
 	if (IS_DIRSYNC(inode))
 		(void) sdfat_sync_inode(inode);
 	else
@@ -3804,6 +3808,7 @@ static int sdfat_write_end(struct file *file, struct address_space *mapping,
 				   struct page *pagep, void *fsdata)
 {
 	struct inode *inode = mapping->host;
+	struct timespec64 ts;
 	FILE_ID_T *fid = &(SDFAT_I(inode)->fid);
 	int err;
 
@@ -3821,7 +3826,8 @@ static int sdfat_write_end(struct file *file, struct address_space *mapping,
 		sdfat_write_failed(mapping, pos+len);
 
 	if (!(err < 0) && !(fid->attr & ATTR_ARCHIVE)) {
-		inode->i_mtime = inode->i_ctime = CURRENT_TIME_SEC;
+		ktime_get_ts64(&ts);
+		inode->i_mtime = inode->i_ctime = ts;
 		fid->attr |= ATTR_ARCHIVE;
 		mark_inode_dirty(inode);
 	}
@@ -4826,12 +4832,12 @@ static void sdfat_hash_init(struct super_block *sb)
 static int sdfat_read_root(struct inode *inode)
 {
 	struct super_block *sb = inode->i_sb;
+	struct timespec64 ts;
 	struct sdfat_sb_info *sbi = SDFAT_SB(sb);
-	sdfat_timespec_t ts;
 	FS_INFO_T *fsi = &(sbi->fsi);
 	DIR_ENTRY_T info;
 
-	ts = CURRENT_TIME_SEC;
+	ktime_get_ts64(&ts);
 
 	SDFAT_I(inode)->fid.dir.dir = fsi->root_dir;
 	SDFAT_I(inode)->fid.dir.flags = 0x01;

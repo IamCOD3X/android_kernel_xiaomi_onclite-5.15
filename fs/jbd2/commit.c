@@ -188,7 +188,7 @@ static int journal_wait_on_commit_record(journal_t *journal,
  * use writepages() because with delayed allocation we may be doing
  * block allocation in writepages().
  */
-static int journal_submit_inode_data_buffers(struct jbd2_inode *jinode,
+static int j_submit_inode_data_buffers(struct jbd2_inode *jinode,
 		loff_t dirty_start, loff_t dirty_end)
 {
 	struct address_space *mapping = jinode->i_vfs_inode->i_mapping;
@@ -304,7 +304,7 @@ static int journal_finish_inode_data_buffers(journal_t *journal,
 		spin_unlock(&journal->j_list_lock);
 		/* wait for the inode data buffers writeout. */
 		if (journal->j_finish_inode_data_buffers) {
-			err = journal->j_finish_inode_data_buffers(jinode->i_vfs_inode->i_mapping, dirty_start, dirty_end);
+			err = filemap_fdatawait_range_keep_errors(jinode->i_vfs_inode->i_mapping, dirty_start, dirty_end);
 			if (!ret)
 				ret = err;
 		}

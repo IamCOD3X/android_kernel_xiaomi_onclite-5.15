@@ -258,7 +258,7 @@ static int journal_submit_data_buffers(journal_t *journal,
 		/* submit the inode data buffers. */
 		trace_jbd2_submit_inode_data(jinode->i_vfs_inode);
 		if (journal->j_submit_inode_data_buffers) {
-			err = journal->j_submit_inode_data_buffers(jinode, dirty_start, dirty_end);
+			err = j_submit_inode_data_buffers(jinode, dirty_start, dirty_end);
 			if (!ret)
 				ret = err;
 		}

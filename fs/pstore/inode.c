@@ -24,6 +24,7 @@
 #include <linux/pstore.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/syslog.h>
 
 // xuke @ 20180611	Import pstore patch from XiaoMi.	Begin
 #ifdef CONFIG_PSTORE_LAST_KMSG
@@ -44,8 +45,13 @@ static struct super_block *pstore_sb;
 struct pstore_private {
 	struct list_head list;
 	struct dentry *dentry;
+	struct pstore_info *psi;
 	struct pstore_record *record;
+	enum pstore_type_id type;
+	u64	id;
+	int	count;
 	size_t total_size;
+	char	data[];
 };
 
 struct pstore_ftrace_seq_data {
@@ -131,6 +137,18 @@ static const struct seq_operations pstore_ftrace_seq_ops = {
 	.stop	= pstore_ftrace_seq_stop,
 	.show	= pstore_ftrace_seq_show,
 };
+
+static int pstore_check_syslog_permissions(struct pstore_private *ps)
+{
+	switch (ps->type) {
+	case PSTORE_TYPE_DMESG:
+	case PSTORE_TYPE_CONSOLE:
+		return check_syslog_permissions(SYSLOG_ACTION_READ_ALL,
+			SYSLOG_FROM_READER);
+	default:
+		return 0;
+	}
+}
 
 static ssize_t pstore_file_read(struct file *file, char __user *userbuf,
 						size_t count, loff_t *ppos)
@@ -397,14 +415,55 @@ int pstore_mkfile(struct dentry *root, struct pstore_record *record)
 		goto fail;
 	inode->i_mode = S_IFREG | 0444;
 	inode->i_fop = &pstore_file_operations;
-	scnprintf(name, sizeof(name), "%s-%s-%llu%s",
-			pstore_type_to_name(record->type),
-			record->psi->name, record->id,
-			record->compressed ? ".enc.z" : "");
 
 	private = kzalloc(sizeof(*private), GFP_KERNEL);
 	if (!private)
 		goto fail_inode;
+		
+	private->type = record->type;
+	private->id = record->id;
+	private->count = record->count;
+	private->psi = record->psi;
+		
+	switch (type) {
+	case PSTORE_TYPE_DMESG:
+		scnprintf(name, sizeof(name), "dmesg-%s-%lld%s",
+			  pstore_type_to_name(record->type), record->psi->name, record->id, record->compressed ? ".enc.z" : "");
+		break;
+	case PSTORE_TYPE_CONSOLE:
+		scnprintf(name, sizeof(name), "console-%s-%lld", pstore_type_to_name(record->type), record->id);
+		break;
+	case PSTORE_TYPE_FTRACE:
+		scnprintf(name, sizeof(name), "ftrace-%s-%lld", pstore_type_to_name(record->type), record->id);
+		break;
+	case PSTORE_TYPE_MCE:
+		scnprintf(name, sizeof(name), "mce-%s-%lld", pstore_type_to_name(record->type), record->id);
+		break;
+	case PSTORE_TYPE_PPC_RTAS:
+		scnprintf(name, sizeof(name), "rtas-%s-%lld", pstore_type_to_name(record->type), record->id);
+		break;
+	case PSTORE_TYPE_PPC_OF:
+		scnprintf(name, sizeof(name), "powerpc-ofw-%s-%lld",
+			  pstore_type_to_name(record->type), record->id);
+		break;
+	case PSTORE_TYPE_PPC_COMMON:
+		scnprintf(name, sizeof(name), "powerpc-common-%s-%lld",
+			  pstore_type_to_name(record->type), record->id);
+		break;
+	case PSTORE_TYPE_PMSG:
+		scnprintf(name, sizeof(name), "pmsg-%s-%lld", pstore_type_to_name(record->type), record->id);
+		break;
+	case PSTORE_TYPE_PPC_OPAL:
+		sprintf(name, "powerpc-opal-%s-%lld", pstore_type_to_name(record->type), record->id);
+		break;
+	case PSTORE_TYPE_UNKNOWN:
+		scnprintf(name, sizeof(name), "unknown-%s-%lld", pstore_type_to_name(record->type), record->id);
+		break;
+	default:
+		scnprintf(name, sizeof(name), "type%d-%s-%lld",
+			  record->psi->name, pstore_type_to_name(record->type), record->id);
+		break;
+	}
 
 	dentry = d_alloc_name(root, name);
 	if (!dentry)
@@ -422,6 +481,15 @@ int pstore_mkfile(struct dentry *root, struct pstore_record *record)
 
 	list_add(&private->list, &records_list);
 	mutex_unlock(&records_list_lock);
+
+// xuke @ 20180611	Import pstore patch from XiaoMi.	Begin
+#ifdef CONFIG_PSTORE_LAST_KMSG
+	if (record->type == PSTORE_TYPE_CONSOLE) {
+		console_buffer = private->data;
+		console_bufsize = size;
+	}
+#endif
+// End
 
 	return 0;
 
@@ -449,15 +517,6 @@ void pstore_get_records(int quiet)
 		return;
 
 	pstore_get_backend_records(psinfo, root, quiet);
-
-// xuke @ 20180611	Import pstore patch from XiaoMi.	Begin
-#ifdef CONFIG_PSTORE_LAST_KMSG
-	if (type == PSTORE_TYPE_CONSOLE) {
-		console_buffer = private->data;
-		console_bufsize = size;
-	}
-#endif
-// End
 
 	inode_unlock(d_inode(root));
 }

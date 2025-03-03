@@ -38,6 +38,7 @@ enum pstore_type_id {
 	PSTORE_TYPE_PPC_COMMON	= 6,
 	PSTORE_TYPE_PMSG	= 7,
 	PSTORE_TYPE_PPC_OPAL	= 8,
+	PSTORE_TYPE_UNKNOWN	= 255,
 
 	/* End of the list */
 	PSTORE_TYPE_MAX

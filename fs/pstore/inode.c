@@ -374,10 +374,21 @@ static ssize_t last_kmsg_read(struct file *file, char __user *buf,
 			console_buffer, console_bufsize);
 }
 
-static const struct file_operations last_kmsg_fops = {
-	.owner          = THIS_MODULE,
-	.read           = last_kmsg_read,
-	.llseek         = default_llseek,
+static int last_kmsg_show(struct seq_file *m, void *v) {
+    seq_puts(m, "This is last_kmsg data\n");  // Replace with actual log data
+    return 0;
+}
+
+static int last_kmsg_open(struct inode *inode, struct file *file) 
+{
+    return single_open(file, last_kmsg_show, NULL);
+}
+
+static const struct proc_ops last_kmsg_pops = {
+    .proc_open  = last_kmsg_open,  // Ensure this function is defined
+    .proc_read  = seq_read,
+    .proc_lseek = seq_lseek,
+    .proc_release = single_release, // If needed
 };
 #endif
 // End
@@ -425,7 +436,7 @@ int pstore_mkfile(struct dentry *root, struct pstore_record *record)
 	private->count = record->count;
 	private->psi = record->psi;
 		
-	switch (ps->type) {
+	switch (record->type) {
 	case PSTORE_TYPE_DMESG:
 		scnprintf(name, sizeof(name), "dmesg-%s-%lld%s",
 			  pstore_type_to_name(record->type), record->psi->name, record->id, record->compressed ? ".enc.z" : "");
@@ -602,8 +613,8 @@ int __init pstore_init_fs(void)
 
 // xuke @ 20180611	Import pstore patch from XiaoMi.	Begin
 #ifdef CONFIG_PSTORE_LAST_KMSG
-		last_kmsg_entry = proc_create_data("last_kmsg", S_IFREG | S_IRUGO,
-					NULL, &last_kmsg_fops, NULL);
+		last_kmsg_entry = proc_create("last_kmsg", 0444,
+					NULL, &last_kmsg_pops);
 		if (!last_kmsg_entry) {
 			pr_err("Failed to create last_kmsg\n");
 			goto out;

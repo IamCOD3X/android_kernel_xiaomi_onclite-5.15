@@ -27,9 +27,17 @@
 #include <linux/clk/msm-clk-provider.h>
 #include <linux/of_platform.h>
 #include <linux/pm_opp.h>
+#include <linux/version.h>
 
 #include <trace/events/power.h>
 #include "clock.h"
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+static inline void trace_clock_set_rate_complete(const char *name, unsigned long rate, int cpu)
+{
+    pr_debug("clock: %s set to %lu Hz on CPU %d\n", name, rate, cpu);
+}
+#endif
 
 struct handoff_clk {
 	struct list_head list;
@@ -1153,7 +1161,7 @@ static int get_voltage(struct clk *clk, unsigned long rate,
 		return uv;
 	}
 
-	uv = regulator_list_corner_voltage(vdd->regulator[0], corner);
+	uv = regulator_list_voltage(vdd->regulator[0], corner);
 	if (uv < 0) {
 		pr_err("%s: no uv for corner %d - err: %d\n",
 				clk->dbg_name, corner, uv);

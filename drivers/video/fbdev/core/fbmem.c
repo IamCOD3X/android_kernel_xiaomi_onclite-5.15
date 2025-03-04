@@ -1080,7 +1080,7 @@ int
 fb_blank(struct fb_info *info, int blank)
 {
 	struct fb_event event;
-	int ret = -EINVAL;
+	int ret = -EINVAL, early_ret;
 
 	if (blank > FB_BLANK_POWERDOWN)
 		blank = FB_BLANK_POWERDOWN;
@@ -1095,6 +1095,8 @@ fb_blank(struct fb_info *info, int blank)
 	}
 	event.info = info;
 	event.data = &blank;
+	
+	early_ret = fb_notifier_call_chain(FB_EARLY_EVENT_BLANK, &event);
 
 	if (info->fbops->fb_blank)
 		ret = info->fbops->fb_blank(blank, info);
@@ -1663,7 +1665,7 @@ static int do_register_framebuffer(struct fb_info *fb_info)
 			break;
 	fb_info->node = i;
 	fb_info->blank= -1;
-	atomic_set(&fb_info->count, 1);
+	refcount_set(&fb_info->count, 1);
 	mutex_init(&fb_info->lock);
 	mutex_init(&fb_info->mm_lock);
 

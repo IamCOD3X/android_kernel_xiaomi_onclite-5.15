@@ -7,6 +7,8 @@
 #include <linux/io.h>
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
+#include <linux/seq_file.h>
+#include <linux/of.h>
 
 #define sn_readl(drvdata, off)	__raw_readl(drvdata->serial_base + off)
 #define fuse_readl(drvdata, off)	__raw_readl(drvdata->fuse_base + off)
@@ -48,11 +50,11 @@ static int sn_proc_open(struct inode *inode, struct file *file)
 	return single_open(file, sn_read, NULL);
 }
 
-static const struct file_operations sn_fops = {
-	.open		= sn_proc_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
+static const struct proc_ops sn_fops = {
+	.proc_open		= sn_proc_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
 };
 
 static int fuse_read(struct seq_file *m, void *v)
@@ -81,11 +83,11 @@ static int fuse_proc_open(struct inode *inode, struct file *file)
 	return single_open(file, fuse_read, NULL);
 }
 
-static const struct file_operations fuse_fops = {
-	.open		= fuse_proc_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
+static const struct proc_ops fuse_fops = {
+	.proc_open		= fuse_proc_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
 };
 
 static void sn_create_proc(void)

@@ -395,8 +395,7 @@ static int trace_clocks_show(struct seq_file *m, void *unused)
 		return 1;
 	}
 	list_for_each_entry(c, &clk_list, list) {
-		trace_clock_state(c->dbg_name, c->prepare_count, c->count,
-					c->rate);
+		trace_clock_set_rate(c->dbg_name, c->count, raw_smp_processor_id());
 		total_cnt++;
 	}
 	mutex_unlock(&clk_list_lock);
@@ -644,34 +643,32 @@ static int clk_debug_init_once;
 static int clock_debug_init(void)
 {
 	if (clk_debug_init_once)
-		return 0;
+	    return 0;
 
 	clk_debug_init_once = 1;
 
 	debugfs_base = debugfs_create_dir("clk", NULL);
 	if (!debugfs_base)
-		return -ENOMEM;
+	    return -ENOMEM;
 
-	if (!debugfs_create_u32("debug_suspend", 0644,
-				debugfs_base, &debug_suspend)) {
-		debugfs_remove_recursive(debugfs_base);
-		return -ENOMEM;
-	}
+	    // No need to check debugfs_create_u32, as it returns void
+	debugfs_create_u32("debug_suspend", 0644, debugfs_base, &debug_suspend);
 
 	if (!debugfs_create_file("enabled_clocks", 0444, debugfs_base, NULL,
-				&enabled_clocks_fops))
-		return -ENOMEM;
+		                     &enabled_clocks_fops))
+	    return -ENOMEM;
 
 	if (!debugfs_create_file("orphan_list", 0444, debugfs_base, NULL,
-				&orphan_list_fops))
-		return -ENOMEM;
+		                     &orphan_list_fops))
+	    return -ENOMEM;
 
 	if (!debugfs_create_file("trace_clocks", 0444, debugfs_base, NULL,
-				&trace_clocks_fops))
-		return -ENOMEM;
+		                     &trace_clocks_fops))
+	    return -ENOMEM;
 
 	return 0;
 }
+
 
 /**
  * clock_debug_register() - Add additional clocks to clock debugfs hierarchy

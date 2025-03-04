@@ -135,6 +135,7 @@ struct ramoops_platform_data {
 	unsigned long	pmsg_size;
 	int		max_reason;
 	u32		flags;
+	int		dump_oops;
 	struct persistent_ram_ecc_info ecc_info;
 };
 
